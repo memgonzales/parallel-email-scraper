@@ -11,46 +11,108 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 URL = f'https://www.dlsu.edu.ph/staff-directory/'
-staff_URL = f'https://www.dlsu.edu.ph/staff-directory/?personnel='
+staff_URL = "https://www.dlsu.edu.ph/staff-directory/?personnel="
 email_class = '.btn.btn-sm.btn-block.text-capitalize'
-dept_position = 'dlsu-pvf-mt-1'
+dept_position = 'list-unstyled.text-capitalize.text-center'
 name_class = '.col-lg-12.col-md-12.col-sm-12 col-xs-12'
 
 # Set the delay to 300 seconds (5 minutes).
-DELAY = 300
+DELAY = 100
 
 options = webdriver.ChromeOptions()
 options.add_argument("--headless")
 options.add_experimental_option('excludeSwitches', ['enable-logging'])
-
 DRIVER = webdriver.Chrome(service = Service(ChromeDriverManager().install()), options = options)
 
 class PersonnelQueueProducer(multiprocessing.Process):
+    global DRIVER
     def __init__(self, personnel_queue, thread_id = 1, delay = DELAY):
         multiprocessing.Process.__init__(self)
         self.id = thread_id
-        self.driver = DRIVER
-
         self.personnel_queue = personnel_queue
         self.delay = delay
 
+        print("Hellooo")
     def run(self):
         print("Running")
-        # personnel = None
-        # while True:
-        #     try:
-        #         personnels = WebDriverWait(driver, self.delay).until(EC.presence_of_all_elements_located((By.NAME, "personnel")))
+        driver = DRIVER
+        personnel = None
+        while True:
+            try:
+                driver.get(URL)
+                personnels = WebDriverWait(driver, self.delay).until(EC.presence_of_all_elements_located((By.NAME, "personnel")))
+                for personnel in personnels:
+                    personnel_id = personnel.get_attribute('value')
+                    self.personnel_queue.put(personnel_id)
+                break
+            except TimeoutException:
+                self.delay += 1
+                print(f"Increasing timeout window to {self.delay} seconds")
 
-        #         for personnel in personnels:
-        #             personnel_ids = personnel.get_attribute('value')
-        #             for personnel_id in personnel_ids:
-        #                 self.queue.put(personnel_id)
+class PersonnelQueueConsumer(multiprocessing.Process):
+    global DRIVER
+    def __init__(self, personnel_queue,writing_queue, thread_id = 1, delay = DELAY):
+        multiprocessing.Process.__init__(self)
+        self.id = thread_id
+        self.personnel_queue = personnel_queue
+        self.writing_queue = writing_queue
+        self.delay = delay
 
-        #         break
+    def run(self):
+        driver = DRIVER
+        personnel_id = self.personnel_queue.get()
+        print(staff_URL+personnel_id)
+        try:
+            affiliation = ["",""]
+            ctr = 0
+            found = 1
+            while True:
+                try:
+                    driver.get(staff_URL+personnel_id)
+                    pos = WebDriverWait(driver, self.delay).until(EC.visibility_of_element_located((By.CLASS_NAME, dept_position)))
+                    name = WebDriverWait(driver, self.delay).until(EC.visibility_of_element_located((By.TAG_NAME, 'h3')))
+                    try:
+                        email = driver.find_element(By.CSS_SELECTOR,email_class)
+                    except:
+                        print("No email")
+                        found = 0
+                        break
+                    items = pos.find_elements(By.TAG_NAME,'li')
+                    break
+                except Exception:
+                    print("ERROR")
+                    print(Exception)
+            if found:
+                for item in items:
+                    if "span" in item.get_attribute('innerHTML'):
+                        affiliation[ctr]+=item.get_attribute('innerHTML')[6:-7]
+                        ctr+=1
+                print("Page is ready!")
+                personnel_email = email.get_attribute('href')[7:]
+                personnel_name = name.get_attribute('innerHTML')
+                values = [personnel_email,personnel_name,affiliation]
+                self.writing_queue.put(values)
+        except TimeoutException:
+            print("Loading took too much time!")
 
-        #     except TimeoutException:
-        #         self.delay += 10
-        #         print(f"Increasing timeout window to {self.delay} seconds")
+class WriterThread(multiprocessing.Process):
+    global DRIVER
+    def __init__(self, personnel_queue,writing_queue, thread_id = 1, delay = DELAY):
+        multiprocessing.Process.__init__(self)
+        self.id = thread_id
+        self.personnel_queue = personnel_queue
+        self.writing_queue = writing_queue
+        self.delay = delay
+
+    def run(self):
+        print("Writing")
+        with open("Scraped_Emails.txt","a") as file:
+            while True:
+                values = self.writing_queue.get()
+                output= f'{values[0]} : {values[1]} {values[2][1]} {values[2][0]}'
+                print(output)
+                file.write(output)
+                print("Writing complete!")
 
 # def main():
 #     driver.get(URL)
@@ -90,9 +152,27 @@ class PersonnelQueueProducer(multiprocessing.Process):
 #     print("Clicked")
 
 if __name__ == "__main__":
+    num_threads = 3
+    consumers = []
     personnel_queue = multiprocessing.Queue()
-    
+    writing_queue = multiprocessing.Queue()
     personnel_queue_producer = PersonnelQueueProducer(personnel_queue)
     personnel_queue_producer.start()
+    for i in range(num_threads):
+        personnel_queue_consumer = PersonnelQueueConsumer(personnel_queue,writing_queue)
+        consumers.append(personnel_queue_consumer)
+        personnel_queue_consumer.start()    
+    writer_thread = WriterThread(personnel_queue,writing_queue)
+    writer_thread.start()
     personnel_queue_producer.join()
+<<<<<<< HEAD
     # main()
+=======
+    for consumer in consumers:
+        consumer.join()
+    writer_thread.join()
+    # main()
+
+    
+
+>>>>>>> c6b1298f8b4d68daf433b4227fae08e50604afaa
