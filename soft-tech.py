@@ -169,6 +169,3 @@ if __name__ == "__main__":
         consumer.join()
     writer_thread.join()
     # main()
-
-    
-
