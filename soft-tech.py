@@ -106,10 +106,10 @@ class WriterThread(multiprocessing.Process):
 
     def run(self):
         print("Writing")
-        with open("Scraped_Emails.txt","a") as file:
+        with open("Scraped_Emails.txt", "a") as file:
             while True:
                 values = self.writing_queue.get()
-                output= f'{values[0]} : {values[1]} {values[2][1]} {values[2][0]}'
+                output= f'{values[0]} : {values[1]} {values[2][1]} {values[2][0]}\n'
                 print(output)
                 file.write(output)
                 print("Writing complete!")
@@ -165,9 +165,6 @@ if __name__ == "__main__":
     writer_thread = WriterThread(personnel_queue,writing_queue)
     writer_thread.start()
     personnel_queue_producer.join()
-<<<<<<< HEAD
-    # main()
-=======
     for consumer in consumers:
         consumer.join()
     writer_thread.join()
@@ -175,4 +172,3 @@ if __name__ == "__main__":
 
     
 
->>>>>>> c6b1298f8b4d68daf433b4227fae08e50604afaa
