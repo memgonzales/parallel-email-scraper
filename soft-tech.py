@@ -1,4 +1,5 @@
-import threading
+import multiprocessing
+import time
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -9,68 +10,92 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-DEPARTMENT = 'ST'
-URL = f'https://www.dlsu.edu.ph/staff-directory/?search&filter=department&category={DEPARTMENT}'
-DELAY = 30
+URL = f'https://www.dlsu.edu.ph/staff-directory/'
+staff_URL = f'https://www.dlsu.edu.ph/staff-directory/?personnel='
+email_class = '.btn.btn-sm.btn-block.text-capitalize'
+dept_position = 'dlsu-pvf-mt-1'
+name_class = '.col-lg-12.col-md-12.col-sm-12 col-xs-12'
+
+# Set the delay to 300 seconds (5 minutes).
+DELAY = 300
 
 options = webdriver.ChromeOptions()
 options.add_argument("--headless")
 options.add_experimental_option('excludeSwitches', ['enable-logging'])
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options = options)
 
-driver.get(URL)
+DRIVER = webdriver.Chrome(service = Service(ChromeDriverManager().install()), options = options)
 
-personnels = None
-while True:
-    try:
-        personnels = WebDriverWait(driver, DELAY).until(EC.presence_of_all_elements_located((By.NAME, "personnel")))
-        break
-    except TimeoutException:
-        print("Increasing timeout window")
-        DELAY += 5
+class PersonnelQueueProducer(multiprocessing.Process):
+    def __init__(self, personnel_queue, thread_id = 1, delay = DELAY):
+        multiprocessing.Process.__init__(self)
+        self.id = thread_id
+        self.driver = DRIVER
 
-print("Page is ready!")
-#print(myElem)
-for personnel in personnels:
-    print(personnel.get_attribute('value'))
-    print(personnel.get_attribute('innerHTML'))
-    print()
+        self.personnel_queue = personnel_queue
+        self.delay = delay
 
-driver.find_element(By.CSS_SELECTOR, ".btn.btn-success.btn-lg.btn-block.text-capitalize").click()
+    def run(self):
+        print("Running")
+        # personnel = None
+        # while True:
+        #     try:
+        #         personnels = WebDriverWait(driver, self.delay).until(EC.presence_of_all_elements_located((By.NAME, "personnel")))
 
-personnels = None
-while True:
-    try:
-        personnels = WebDriverWait(driver, DELAY).until(EC.presence_of_all_elements_located((By.NAME, "personnel")))
-        break
-    except TimeoutException:
-        print("Increasing timeout window")
-        DELAY += 5
+        #         for personnel in personnels:
+        #             personnel_ids = personnel.get_attribute('value')
+        #             for personnel_id in personnel_ids:
+        #                 self.queue.put(personnel_id)
+
+        #         break
+
+        #     except TimeoutException:
+        #         self.delay += 10
+        #         print(f"Increasing timeout window to {self.delay} seconds")
+
+# def main():
+#     driver.get(URL)
+
+#     personnels = None
+#     while True:
+#         try:
+#             new_personnels = WebDriverWait(driver, DELAY).until(EC.presence_of_all_elements_located((By.NAME, "personnel")))
+#             break
+#         except TimeoutException:
+#             print("Increasing timeout window")
+#             DELAY += 10
+
+#     while True:
+#         try:
+#             loadmore = WebDriverWait(driver, DELAY).until(EC.element_to_be_clickable((By.CSS_SELECTOR,".btn.btn-success.btn-lg.btn-block.text-capitalize")))
+#             driver.execute_script("arguments[0].scrollIntoView();", loadmore)
+#             loadmore.click()
+#             time.sleep(100)
+#         except TimeoutException:
+#             DELAY+=10
+#         except:
+#             break
+            
+
+#     print("Page is ready!")
+#     #print(myElem)
+#     for personnel in personnels:
+#         print(personnel.get_attribute('value'))
+#         print(personnel.get_attribute('innerHTML'))
+#         print()
 
 
-
-# emails = []
-# found = False
-# for a in soup.find_all('a',href=True):
-#    test_em = a['href']
-#    if test_em[:6] == "mailto":
-#        emails.append(a['href'][7:])
-#        found = True
+#     # driver.find_element(By.CSS_SELECTOR, ".btn.btn-success.btn-lg.btn-block.text-capitalize").click()
 
 
+#     print("Clicked")
 
-
-
-class Crawler(threading.Thread):
-    def __init__(self,base_url, links_to_crawl,have_visited, error_links,url_lock):
-       
-        threading.Thread.__init__(self)
-        print(f"Web Crawler worker {threading.current_thread()} has Started")
-        self.base_url = base_url
-        self.links_to_crawl = links_to_crawl
-        self.have_visited = have_visited
-        self.error_links = error_links
-        self.url_lock = url_lock
+if __name__ == "__main__":
+    personnel_queue = multiprocessing.Queue()
+    
+    personnel_queue_producer = PersonnelQueueProducer(personnel_queue)
+    personnel_queue_producer.start()
+    personnel_queue_producer.join()
+    # main()
 
     
 
