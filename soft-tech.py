@@ -96,6 +96,3 @@ if __name__ == "__main__":
     personnel_queue_producer.start()
     personnel_queue_producer.join()
     # main()
-
-    
-
