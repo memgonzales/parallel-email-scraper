@@ -19,7 +19,7 @@ dept_position = 'list-unstyled.text-capitalize.text-center'
 name_class = '.col-lg-12.col-md-12.col-sm-12 col-xs-12'
 dept_URL = "https://www.dlsu.edu.ph/staff-directory/?search&filter=department&category="
 # Set the delay to 60 seconds (1 minute).
-DELAY = 60
+DELAY = 50
 options = webdriver.ChromeOptions()
 options.add_argument("--headless")
 options.add_experimental_option('excludeSwitches', ['enable-logging'])
@@ -96,7 +96,6 @@ class PersonnelQueueProducer(multiprocessing.Process):
                 except TimeoutException:
                     self.delay += 1
                     print(f"Increasing timeout window to {self.delay} seconds")
-                    print(self.notTerminated.value)
             if self.mode != 1:
                 break
 
@@ -117,7 +116,10 @@ class PersonnelQueueConsumer(multiprocessing.Process):
         driver = DRIVER
         self.delay = 15
         while self.notTerminated.value:
-            personnel_id = self.personnel_queue.get()
+            try:
+                personnel_id = self.personnel_queue.get(timeout = 3)
+            except:
+                continue
             print(staff_URL+personnel_id)
             try:
                 affiliation = ["",""]
@@ -126,9 +128,13 @@ class PersonnelQueueConsumer(multiprocessing.Process):
                 while self.notTerminated.value:
                     try:
                         driver.get(staff_URL+personnel_id)
+                        if self.notTerminated.value == 0:
+                            break
                         self.url_queue.put(staff_URL+personnel_id)
                         self.url_ctr.value+=1
                         pos = WebDriverWait(driver, self.delay).until(EC.visibility_of_element_located((By.CLASS_NAME, dept_position)))
+                        if self.notTerminated.value == 0:
+                            break
                         name = WebDriverWait(driver, self.delay).until(EC.visibility_of_element_located((By.TAG_NAME, 'h3')))
                         try:
                             email = driver.find_element(By.CSS_SELECTOR,email_class)
@@ -139,12 +145,14 @@ class PersonnelQueueConsumer(multiprocessing.Process):
                             print("No email")
                             found = 0
                             break
+                        if self.notTerminated.value == 0:
+                            break
                         items = pos.find_elements(By.TAG_NAME,'li')
                         break
                     except Exception:
                         print("ERROR")
                         print(Exception)
-                if found:
+                if found and self.notTerminated.value   :
                     for item in items:
                         if "span" in item.get_attribute('innerHTML'):
                             affiliation[ctr]+=item.get_attribute('innerHTML')[6:-7]
@@ -173,7 +181,10 @@ class WriterThread(multiprocessing.Process):
         print("Writing")
         with open("Scraped_Emails.csv", "w",1) as file:
             while self.notTerminated.value:
-                values = self.writing_queue.get()
+                try:
+                    values = self.writing_queue.get(timeout = 3)
+                except:
+                    continue
                 output= f'{values[0]},{values[1]},{values[2][1]}\n'
                 print(output)
                 file.write(output)
@@ -202,13 +213,13 @@ class TimerThread(threading.Thread):
 
         
 if __name__ == "__main__":
-    #tracemalloc.start()
-    duration = 60
+    tracemalloc.start()
+    duration = 180
     manager = multiprocessing.Manager()
     terminate = manager.Value('i',1)
     email_ctr = manager.Value('i',0)
     url_ctr = manager.Value('i',0)
-    num_consumers = 4
+    num_consumers = 3
     num_producers = 2
     mode = 1
     if mode == 1:
@@ -240,5 +251,5 @@ if __name__ == "__main__":
     writer_thread.join()
     timer_thread.join()
     print("FINISHED")
-    #print(tracemalloc.get_traced_memory())
-    #tracemalloc.stop()
+    print(tracemalloc.get_traced_memory())
+    tracemalloc.stop()
