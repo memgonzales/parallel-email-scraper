@@ -1,5 +1,7 @@
 import multiprocessing
 import time
+import threading
+import tracemalloc
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -16,9 +18,8 @@ email_class = '.btn.btn-sm.btn-block.text-capitalize'
 dept_position = 'list-unstyled.text-capitalize.text-center'
 name_class = '.col-lg-12.col-md-12.col-sm-12 col-xs-12'
 dept_URL = "https://www.dlsu.edu.ph/staff-directory/?search&filter=department&category="
-# Set the delay to 300 seconds (5 minutes).
+# Set the delay to 60 seconds (1 minute).
 DELAY = 60
-
 options = webdriver.ChromeOptions()
 options.add_argument("--headless")
 options.add_experimental_option('excludeSwitches', ['enable-logging'])
@@ -47,8 +48,7 @@ department_queue = multiprocessing.Queue()
 #     dpts.append(value)
 #     department_queue.put(value)
 class PersonnelQueueProducer(multiprocessing.Process):
-    global DRIVER
-    def __init__(self, personnel_queue, department_queue,thread_id = 1, delay = DELAY,mode = 1):
+    def __init__(self, personnel_queue, department_queue,url_queue,counters,thread_id = 1, delay = DELAY,mode = 1):
         multiprocessing.Process.__init__(self)
         self.id = thread_id
         self.personnel_queue = personnel_queue
@@ -56,32 +56,37 @@ class PersonnelQueueProducer(multiprocessing.Process):
         self.pages_scraped = 0
         self.mode = mode
         self.department_queue = department_queue
+        self.url_queue = url_queue
+        self.notTerminated = counters[0]
+        self.url_ctr = counters[1]
+        self.email_ctr = counters[2]
+
 
     def run(self):
         print("Producing")
         driver = DRIVER
         link = URL
-        while True:
-            if self.mode == 2:
+        while self.notTerminated.value:
+            if self.mode == 1:
                 dept = self.department_queue.get()
                 link = dept_URL+dept
                 print(link)
             personnel = None
-            while True:
+            while self.notTerminated.value:
                 try:
                     driver.get(link)
-                    while True:
+                    self.url_queue.put(link)
+                    self.url_ctr.value+=1
+                    while self.notTerminated.value:
                         try:
-                            loadmore = WebDriverWait(driver, DELAY).until(EC.element_to_be_clickable((By.CSS_SELECTOR,".btn.btn-success.btn-lg.btn-block.text-capitalize")))
+                            loadmore = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.CSS_SELECTOR,".btn.btn-success.btn-lg.btn-block.text-capitalize")))
                             driver.execute_script("arguments[0].scrollIntoView();", loadmore)
                             loadmore.click()
                         except:
                             print("ERROR load")
                             break
-                    try:
-                        loadmore = WebDriverWait(driver, DELAY).until(EC.visibility_of_element_located((By.CSS_SELECTOR,".btn.btn-success.btn-lg.btn-block.text-capitalize")))
-                    except:
-                        print("No load more")
+                    if not self.notTerminated.value:
+                        break
                     personnels = WebDriverWait(driver, self.delay).until(EC.presence_of_all_elements_located((By.NAME, "personnel")))
                     for personnel in personnels:
                         personnel_id = personnel.get_attribute('value')
@@ -91,35 +96,45 @@ class PersonnelQueueProducer(multiprocessing.Process):
                 except TimeoutException:
                     self.delay += 1
                     print(f"Increasing timeout window to {self.delay} seconds")
-            if self.mode == 1:
+                    print(self.notTerminated.value)
+            if self.mode != 1:
                 break
 
 class PersonnelQueueConsumer(multiprocessing.Process):
-    global DRIVER
-    def __init__(self, personnel_queue,writing_queue, thread_id = 1, delay = DELAY):
+    def __init__(self, personnel_queue,writing_queue, url_queue,counters,thread_id = 1, delay = DELAY):
         multiprocessing.Process.__init__(self)
         self.id = thread_id
         self.personnel_queue = personnel_queue
         self.writing_queue = writing_queue
         self.delay = delay
+        self.url_queue = url_queue
+        self.notTerminated = counters[0]
+        self.url_ctr = counters[1]
+        self.email_ctr = counters[2]
 
     def run(self):
         print("Consuming")
         driver = DRIVER
-        while True:
+        self.delay = 15
+        while self.notTerminated.value:
             personnel_id = self.personnel_queue.get()
             print(staff_URL+personnel_id)
             try:
                 affiliation = ["",""]
                 ctr = 0
                 found = 1
-                while True:
+                while self.notTerminated.value:
                     try:
                         driver.get(staff_URL+personnel_id)
+                        self.url_queue.put(staff_URL+personnel_id)
+                        self.url_ctr.value+=1
                         pos = WebDriverWait(driver, self.delay).until(EC.visibility_of_element_located((By.CLASS_NAME, dept_position)))
                         name = WebDriverWait(driver, self.delay).until(EC.visibility_of_element_located((By.TAG_NAME, 'h3')))
                         try:
                             email = driver.find_element(By.CSS_SELECTOR,email_class)
+                            if "mailto" not in email.get_attribute('href'):
+                                found = 0
+                                break
                         except:
                             print("No email")
                             found = 0
@@ -143,30 +158,60 @@ class PersonnelQueueConsumer(multiprocessing.Process):
                 print("Loading took too much time!")
 
 class WriterThread(multiprocessing.Process):
-    global DRIVER
-    def __init__(self, personnel_queue,writing_queue, thread_id = 1, delay = DELAY):
+    def __init__(self, personnel_queue,writing_queue, url_queue,counters,thread_id = 1, delay = DELAY):
         multiprocessing.Process.__init__(self)
         self.id = thread_id
         self.personnel_queue = personnel_queue
         self.writing_queue = writing_queue
         self.delay = delay
+        self.url_queue = url_queue
+        self.notTerminated = counters[0]
+        self.url_ctr = counters[1]
+        self.email_ctr = counters[2]
 
     def run(self):
         print("Writing")
-        with open("Scraped_Emails.txt", "a",1) as file:
-            while True:
+        with open("Scraped_Emails.csv", "w",1) as file:
+            while self.notTerminated.value:
                 values = self.writing_queue.get()
-                output= f'{values[0]} : {values[1]} {values[2][1]} {values[2][0]}\n'
+                output= f'{values[0]},{values[1]},{values[2][1]}\n'
                 print(output)
                 file.write(output)
                 print("Writing complete!")
+                self.email_ctr.value+=1
+        with open("Website_Statistics.txt","w",1) as file:
+            file.write(f'URLs Scraped: {self.url_ctr.value}\n')
+            file.write(f'Emails Found: {self.email_ctr.value}\n')
+            file.write("URLs Found:\n")
+            for i in range(self.url_ctr.value):
+                file.write(self.url_queue.get()+"\n")
+                
 
+class TimerThread(threading.Thread):
+    def __init__(self, duration,terminate):
+        threading.Thread.__init__(self)
+        self.duration = duration
+        self.terminate = terminate
+    
+    def run(self):
+        global terminate
+        time.sleep(self.duration)
+        terminate.value = 0
+        print(terminate.value)
+        print("TERMINATE")
 
+        
 if __name__ == "__main__":
+    #tracemalloc.start()
+    duration = 60
+    manager = multiprocessing.Manager()
+    terminate = manager.Value('i',1)
+    email_ctr = manager.Value('i',0)
+    url_ctr = manager.Value('i',0)
     num_consumers = 4
     num_producers = 2
-    mode = 2
-    if mode == 2:
+    mode = 1
+    if mode == 1:
         for department in departments:
             department_queue.put(department)
         print("Got departments")
@@ -174,20 +219,26 @@ if __name__ == "__main__":
     producers = []
     personnel_queue = multiprocessing.Queue()
     writing_queue = multiprocessing.Queue()
+    url_queue = multiprocessing.Queue()
+    timer_thread = TimerThread(duration,terminate)
+    timer_thread.start()
+    counters = [terminate,url_ctr,email_ctr]
     for i in range(num_producers):
-        personnel_queue_producer = PersonnelQueueProducer(personnel_queue,department_queue,mode = mode)
+        personnel_queue_producer = PersonnelQueueProducer(personnel_queue,department_queue,url_queue,counters,mode = mode)
         producers.append(personnel_queue_producer)
         personnel_queue_producer.start()
     for i in range(num_consumers):
-        personnel_queue_consumer = PersonnelQueueConsumer(personnel_queue,writing_queue)
+        personnel_queue_consumer = PersonnelQueueConsumer(personnel_queue,writing_queue,url_queue,counters)
         consumers.append(personnel_queue_consumer)
         personnel_queue_consumer.start()    
-    writer_thread = WriterThread(personnel_queue,writing_queue)
+    writer_thread = WriterThread(personnel_queue,writing_queue,url_queue,counters)
     writer_thread.start()
     for producer in producers:
         producer.join()
     for consumer in consumers:
         consumer.join()
-    
     writer_thread.join()
-    # main()
+    timer_thread.join()
+    print("FINISHED")
+    #print(tracemalloc.get_traced_memory())
+    #tracemalloc.stop()
