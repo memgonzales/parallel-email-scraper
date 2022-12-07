@@ -68,7 +68,11 @@ class PersonnelQueueProducer(multiprocessing.Process):
         link = URL
         while self.notTerminated.value:
             if self.mode == 1:
-                dept = self.department_queue.get()
+                try:
+                    dept = self.department_queue.get(timeout = 3)
+                except Exception:
+                    print(Exception)
+                    break
                 link = dept_URL+dept
                 print(link)
             personnel = None
@@ -85,9 +89,14 @@ class PersonnelQueueProducer(multiprocessing.Process):
                         except:
                             print("ERROR load")
                             break
-                    if not self.notTerminated.value:
+                    if self.notTerminated.value==0:
+                        self.personnel_queue.put(None)
+                        for item in iter(self.personnel_queue.get, None):
+                            a = 1
                         break
                     personnels = WebDriverWait(driver, self.delay).until(EC.presence_of_all_elements_located((By.NAME, "personnel")))
+                    if self.notTerminated.value==0:
+                        break
                     for personnel in personnels:
                         personnel_id = personnel.get_attribute('value')
                         self.personnel_queue.put(personnel_id)
@@ -98,6 +107,8 @@ class PersonnelQueueProducer(multiprocessing.Process):
                     print(f"Increasing timeout window to {self.delay} seconds")
             if self.mode != 1:
                 break
+        self.personnel_queue.close()
+        print(self.personnel_queue.qsize())
 
 class PersonnelQueueConsumer(multiprocessing.Process):
     def __init__(self, personnel_queue,writing_queue, url_queue,counters,thread_id = 1, delay = DELAY):
@@ -152,7 +163,9 @@ class PersonnelQueueConsumer(multiprocessing.Process):
                     except Exception:
                         print("ERROR")
                         print(Exception)
-                if found and self.notTerminated.value   :
+                if found:
+                    if self.notTerminated.value == 0:
+                        break
                     for item in items:
                         if "span" in item.get_attribute('innerHTML'):
                             affiliation[ctr]+=item.get_attribute('innerHTML')[6:-7]
@@ -162,8 +175,11 @@ class PersonnelQueueConsumer(multiprocessing.Process):
                     personnel_name = name.get_attribute('innerHTML')
                     values = [personnel_email,personnel_name,affiliation]
                     self.writing_queue.put(values)
-            except TimeoutException:
+            except Exception:
+                print(Exception)
                 print("Loading took too much time!")
+        self.personnel_queue.close()
+        print(self.personnel_queue.qsize())
 
 class WriterThread(multiprocessing.Process):
     def __init__(self, personnel_queue,writing_queue, url_queue,counters,thread_id = 1, delay = DELAY):
@@ -190,37 +206,36 @@ class WriterThread(multiprocessing.Process):
                 file.write(output)
                 print("Writing complete!")
                 self.email_ctr.value+=1
+        print("F1 complete")
         with open("Website_Statistics.txt","w",1) as file:
             file.write(f'URLs Scraped: {self.url_ctr.value}\n')
             file.write(f'Emails Found: {self.email_ctr.value}\n')
             file.write("URLs Found:\n")
             for i in range(self.url_ctr.value):
                 file.write(self.url_queue.get()+"\n")
-                
+        print("F2 complete")
+        DRIVER.quit()
 
-class TimerThread(threading.Thread):
+class TimerThread(multiprocessing.Process):
     def __init__(self, duration,terminate):
-        threading.Thread.__init__(self)
+        multiprocessing.Process.__init__(self)
         self.duration = duration
-        self.terminate = terminate
-    
+        self.terminated = terminate
     def run(self):
-        global terminate
         time.sleep(self.duration)
-        terminate.value = 0
-        print(terminate.value)
+        self.terminated.value = 0
+        print(self.terminated.value)
         print("TERMINATE")
 
         
 if __name__ == "__main__":
-    tracemalloc.start()
     duration = 180
     manager = multiprocessing.Manager()
     terminate = manager.Value('i',1)
     email_ctr = manager.Value('i',0)
     url_ctr = manager.Value('i',0)
-    num_consumers = 3
-    num_producers = 2
+    num_consumers = 22
+    num_producers = 3
     mode = 1
     if mode == 1:
         for department in departments:
@@ -251,5 +266,3 @@ if __name__ == "__main__":
     writer_thread.join()
     timer_thread.join()
     print("FINISHED")
-    print(tracemalloc.get_traced_memory())
-    tracemalloc.stop()
