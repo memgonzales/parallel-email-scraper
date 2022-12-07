@@ -81,14 +81,38 @@ class PersonnelQueueProducer(multiprocessing.Process):
                     driver.get(link)
                     self.url_queue.put(link)
                     self.url_ctr.value+=1
+                    i=1
+                    curr =0
                     while self.notTerminated.value:
-                        try:
-                            loadmore = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.CSS_SELECTOR,".btn.btn-success.btn-lg.btn-block.text-capitalize")))
-                            driver.execute_script("arguments[0].scrollIntoView();", loadmore)
-                            loadmore.click()
-                        except:
-                            print("ERROR load")
-                            break
+                        if self.mode == 3:
+                            try:
+                                personnel = WebDriverWait(driver, self.delay).until(EC.presence_of_all_elements_located((By.NAME, "personnel")))
+                                try:
+                                    loadmore = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.CSS_SELECTOR,".btn.btn-success.btn-lg.btn-block.text-capitalize")))
+                                    driver.execute_script("arguments[0].scrollIntoView();", loadmore)
+                                    loadmore.click()
+                                except:
+                                    pass
+                                
+                                for personnel in personnels[curr:]:
+                                    personnel_id = personnel.get_attribute('value')
+                                    self.personnel_queue.put(personnel_id)
+                                curr = len(personnel)
+                            except:
+                                print("ERROR load")
+                                break
+                        else:
+                            try:
+                                loadmore = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.CSS_SELECTOR,".btn.btn-success.btn-lg.btn-block.text-capitalize")))
+                                driver.execute_script("arguments[0].scrollIntoView();", loadmore)
+                                loadmore.click()
+                                print("Load ",i)
+                                i+=1
+                                if self.notTerminated.value != 1 and self.mode == 2:
+                                    break
+                            except:
+                                print("ERROR load")
+                                break
                     if self.notTerminated.value==0:
                         self.personnel_queue.put(None)
                         for item in iter(self.personnel_queue.get, None):
@@ -222,7 +246,9 @@ class TimerThread(multiprocessing.Process):
         self.duration = duration
         self.terminated = terminate
     def run(self):
-        time.sleep(self.duration)
+        time.sleep(self.duration/2)
+        self.terminated.value = 0.5
+        time.sleep(self.duration/2)
         self.terminated.value = 0
         print(self.terminated.value)
         print("TERMINATE")
@@ -234,9 +260,9 @@ if __name__ == "__main__":
     terminate = manager.Value('i',1)
     email_ctr = manager.Value('i',0)
     url_ctr = manager.Value('i',0)
-    num_consumers = 22
-    num_producers = 3
-    mode = 1
+    num_consumers = 4
+    num_producers = 1
+    mode = 2
     if mode == 1:
         for department in departments:
             department_queue.put(department)
