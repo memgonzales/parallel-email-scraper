@@ -214,7 +214,7 @@ class WriterThread(multiprocessing.Process):
                     values = self.writing_queue.get(timeout = 3)
                 except:
                     continue
-                output= f'{values[0]},{values[1]},{values[2][1]}\n'
+                output= f'{values[0]},"{values[1]}",{values[2][1]}\n'
                 print("Written Personnel: ",output)
                 file.write(output)
                 self.email_ctr.value+=1
