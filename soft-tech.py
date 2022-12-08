@@ -215,7 +215,7 @@ class WriterThread(multiprocessing.Process):
                 except:
                     continue
                 output= f'{values[0]},{values[1]},{values[2][1]}\n'
-                print("Personnel: ",output)
+                print("Written Personnel: ",output)
                 file.write(output)
                 self.email_ctr.value+=1
         with open("Website_Statistics.txt","w",1) as file:
@@ -251,14 +251,14 @@ def program_start():
         mode = 1
     if threads == 1:
         return mode, duration,1,0
-    if mode == 1:
+    if int(mode) == 1:
         num_producers = int(input("Enter the number of producers: "))
         num_consumers = int(input("Enter the number of consumers: "))
     else:
         num_producers = 1
         num_consumers = threads-2
     
-    return mode,duration,num_producers,num_consumers
+    return int(mode),duration,num_producers,num_consumers
             
 if __name__ == "__main__":
     manager = multiprocessing.Manager()
