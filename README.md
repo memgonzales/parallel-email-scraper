@@ -27,10 +27,18 @@ The following output files will be produced once the program is finished running
 - `Scraped_Emails.csv` - A text file containing the scraped details (names, email addresses, and departments)
 - `Website_Statistics.txt` - A text file containing the number of pages scraped, the number of email addresses found, and the URLs scraped
 
-## Dependencies
-
-
 ## Built Using
+This project was built using **Python 3.8**, with the following libraries and modules used:
+
+Libraries/Modules | Description | License
+--- | ---| ---
+Selenium 4.7.2 | Provides functions for generating pseudo-random numbers with various common distributions | Python Software Foundation License
+Webdriver Manager 3.8.5 | | 
+`multiprocessing` | Provides functions for converting Python objects to streams of bytes and back | Python Software Foundation License
+`time` | Provides functions for converting Python objects to streams of bytes and back | Python Software Foundation License
+
+*The descriptions are taken from their respective websites.*
+
 
 ## Authors
 - <b>Mark Edward M. Gonzales</b> <br/>
