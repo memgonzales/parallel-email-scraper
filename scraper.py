@@ -1,7 +1,5 @@
 import multiprocessing
 import time
-import threading
-import tracemalloc
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
