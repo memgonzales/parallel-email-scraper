@@ -4,7 +4,7 @@ This project is a **multiprocess email address scraper** for the De La Salle Uni
 
 This is the major course output in an advanced operating systems class for master's students under Mr. Gregory G. Cu of the Department of Software Technology, College of Computer Studies. The task is to create an email address scraper that employs parallel programming techniques.
 
-- **Complete Technical Paper:** [Technical Paper](https://github.com/memgonzales/parallel-email-scraper/blob/master/Technical%20Paper.pdf)
+- **Technical Paper:** [Technical Paper](https://github.com/memgonzales/parallel-email-scraper/blob/master/Technical%20Paper.pdf)
 - **Video Demonstration:** https://www.youtube.com/watch?v=zYA5TIbF9UE
 
 ## Approach
