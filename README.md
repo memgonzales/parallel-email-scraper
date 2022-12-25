@@ -1,4 +1,7 @@
 # Multiprocesses Email Address Scraper
+![badge][badge-python]
+![badge][badge-selenium]
+![badge][badge-chrome]
 
 This project is a **multiprocess email address scraper** for the De La Salle University website staff directory. 
 
@@ -63,3 +66,7 @@ Libraries/Modules | Description | License
 - <b>Hans Oswald A. Ibrahim</b> <br/>
   hans_oswald_ibrahim@dlsu.edu.ph <br/>
   hans.ibrahim2001@gmail.com
+
+[badge-python]: https://img.shields.io/badge/python-3670A0?style=flat&logo=python&logoColor=ffdd54
+[badge-selenium]: https://img.shields.io/badge/Selenium-43B02A?style=flat&logo=Selenium&logoColor=white
+[badge-chrome]: https://img.shields.io/badge/Google%20Chrome-4285F4?style=flat&logo=GoogleChrome&logoColor=white
