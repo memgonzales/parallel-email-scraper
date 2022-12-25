@@ -11,6 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+
 dept = "IT"
 URL = f'https://www.dlsu.edu.ph/staff-directory/'
 staff_URL = "https://www.dlsu.edu.ph/staff-directory/?personnel="
@@ -18,7 +19,7 @@ email_class = '.btn.btn-sm.btn-block.text-capitalize'
 dept_position = 'list-unstyled.text-capitalize.text-center'
 name_class = '.col-lg-12.col-md-12.col-sm-12 col-xs-12'
 dept_URL = "https://www.dlsu.edu.ph/staff-directory/?search&filter=department&category="
-# Set the delay to 60 seconds (1 minute).
+
 DELAY = 50
 options = webdriver.ChromeOptions()
 options.add_argument("--headless")
@@ -31,7 +32,11 @@ departments = ['IT', 'CT', 'ST', 'CEPD', 'ELMD', 'DEAL', 'PE', 'SED', 'ACCTY', '
 'CHANCELLOR', 'OP', 'OUR', 'PHYLAB', 'PROCUREMENT', 'QAO', 'ROTC', 'RMCA', 'SED', 'SECURITY', 'SDRC', 'STRATCOM', 'SDFO', 'SLIFE', 'SM', 'MUSEUM', 'LIBRARY', 'URCO', 
 'UREO', 'SAFETY', 'VCA', 'VCRI', 'VPLM']
 department_queue = multiprocessing.Queue()
-#Get Departments
+
+# =========================================================================================================
+# Uncomment the following lines to dynamically fetch the departments from the DLSU website staff directory.
+# =========================================================================================================
+
 # while True:
 #     try:
 #         DRIVER.get(dept_URL+dept)
@@ -47,6 +52,7 @@ department_queue = multiprocessing.Queue()
 #         continue
 #     dpts.append(value)
 #     department_queue.put(value)
+
 class PersonnelQueueProducer(multiprocessing.Process):
     def __init__(self, personnel_queue, department_queue,url_queue,counters,thread_id = 1, delay = DELAY,mode = 1):
         multiprocessing.Process.__init__(self)
@@ -60,7 +66,6 @@ class PersonnelQueueProducer(multiprocessing.Process):
         self.notTerminated = counters[0]
         self.url_ctr = counters[1]
         self.email_ctr = counters[2]
-
 
     def run(self):
         print(f'Producer {self.id} starting')
