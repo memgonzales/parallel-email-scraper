@@ -28,14 +28,16 @@ Running our proposed approach with five threads achieves a **7.22&times; superli
 
     - If git is not installed, click the green `Code` button near the top right of the repository and choose [`Download ZIP`](https://github.com/memgonzales/parallel-email-scraper/archive/refs/heads/master.zip). Once the zipped folder has been downloaded, extract its contents.
 
-2. Install [Google Chrome](https://www.google.com/chrome/?brand=BNSD&gclid=CjwKCAiAhqCdBhB0EiwAH8M_GvFEsHmcDe4zQm_t8izcLesJyq_GzCKoJp24grz8rve-lIxYYqmdxRoCX4oQAvD_BwE&gclsrc=aw.ds) and the necessary [dependencies](https://github.com/memgonzales/parallel-email-scraper#built-using). All the dependencies can be installed via `pip`.
+2. Install [Google Chrome](https://www.google.com/chrome/?brand=BNSD&gclid=CjwKCAiAhqCdBhB0EiwAH8M_GvFEsHmcDe4zQm_t8izcLesJyq_GzCKoJp24grz8rve-lIxYYqmdxRoCX4oQAvD_BwE&gclsrc=aw.ds). It is recommended to retain the default installation directory.
 
-3. Run the following command on the terminal:
+3. Install the necessary [dependencies](https://github.com/memgonzales/parallel-email-scraper#built-using). All the dependencies can be installed via `pip`.
+
+4. Run the following command on the terminal:
    ```
    python scraper.py
    ```
 
-4. The following output files will be produced once the program is finished running:
+5. The following output files will be produced once the program is finished running:
    - `Scraped_Emails.csv` - A text file containing the scraped details (names, email addresses, and departments)
    - `Website_Statistics.txt` - A text file containing the number of pages scraped, the number of email addresses found, and the URLs scraped
 
@@ -49,7 +51,7 @@ Libraries/Modules | Description | License
 [Selenium 4.7.2](https://pypi.org/project/selenium/) | Provides functions for enabling web browser automation | Apache License 2.0
 [Webdriver Manager 3.8.5](https://pypi.org/project/webdriver-manager/) | Simplifies management of binary drivers for different browsers | Apache License 2.0
 [`multiprocessing`](https://docs.python.org/3/library/multiprocessing.html) | Offers both local and remote concurrency, effectively side-stepping the Global Interpreter Lock | Python Software Foundation License
-[`time`](https://docs.python.org/3/library/time.html) | Provides various time-related functionsk | Python Software Foundation License
+[`time`](https://docs.python.org/3/library/time.html) | Provides various time-related functions | Python Software Foundation License
 
 *The descriptions are taken from their respective websites.*
 
